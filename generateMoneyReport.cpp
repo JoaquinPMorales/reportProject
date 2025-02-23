@@ -2,8 +2,8 @@
 
 
 enum Analysis {
-    eMonthly, // 0
-    eAnnual // 1
+    eMonthly = 1,
+    eAnnual
 };
 
 struct LeisureCosts {
@@ -41,28 +41,44 @@ struct MoneyReport{
     }
 };
 
-int main( int argc,      // Number of strings in array argv
+int main(int argc,      // Number of strings in array argv
           char *argv[])   // Array of command-line argument strings
 {
     std::string pathFiles("");
-    if(argc == 1 || argc > 3) {
-        std::cout << "You have to enter at least a valid path where csv files are and type of analysis you want(montly or annual)" << std::endl;
-    } else if(argc == 2) {
-        std::cout << "You have to specify the type of analysis you want(montly or annual)" << std::endl;
-    } else{
-        pathFiles = argv[1];
-        std::string analysisType = argv[2];
-        switch (std::stoi(argv[2])) // Converts string to int
+
+    std::cout << "-----------------Welcome to the money report program!-----------------" << std::endl;
+    bool isValidResponse = false;
+    int optionSelected(0);
+    do {
+        std::cout << "Please select one of the options:" << std::endl;
+        std::cout << "1) Monthly report" << std::endl;
+        std::cout << "2) Annual report" << std::endl;
+        std::string response("");
+        std::cin >> response;
+        try
         {
-        case eMonthly:
-            std::cout << "Monthly report" << std::endl;
-            std::cout << "path: " << pathFiles << std::endl;
-            break;
-        case eAnnual:
-            std::cout << "Annual report" << std::endl;
-            break;
-        default:
-            break;
+            optionSelected = std::stoi(response);
         }
-    }
+        catch (const std::invalid_argument&) {
+            std::cout << "Error: String '" << response << "' is not a valid number\n";
+        }
+        catch (const std::out_of_range&) {
+            std::cout << "Error: Number '" << response << "' is too large or small\n";
+        }
+        switch (optionSelected){
+            case eMonthly:
+                isValidResponse = true;
+                std::cout << "You selected Montly report." << std::endl;
+                break;
+            case eAnnual:
+                isValidResponse = true;
+                std::cout << "You selected Annual report." << std::endl;
+                break;
+            default:
+                std::cout << "Invalid response." << std::endl;
+                break;
+        }
+    } while(!isValidResponse);
+
+    std::cout << "You selected: " << optionSelected << std::endl;
 }
