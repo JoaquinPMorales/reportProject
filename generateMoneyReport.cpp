@@ -1,5 +1,7 @@
 #include <iostream> // cout
-
+#include <filesystem>
+#include <fstream>
+#include <vector>
 
 enum Analysis {
     eMonthly = 1,
@@ -41,6 +43,18 @@ struct MoneyReport{
     }
 };
 
+struct ReportEntry {
+    enum EntryPos{
+        eOperationDate,
+        ePayDate,
+        eConceptPayment,
+        eAmount
+    };
+    std::vector<std::string> entryColumns;
+};
+
+std::vector<ReportEntry> reportEntries;
+
 int main(int argc,      // Number of strings in array argv
           char *argv[])   // Array of command-line argument strings
 {
@@ -80,5 +94,49 @@ int main(int argc,      // Number of strings in array argv
         }
     } while(!isValidResponse);
 
-    std::cout << "You selected: " << optionSelected << std::endl;
+    isValidResponse = false;
+    std::filesystem::path pathFile;
+    do
+    {
+        std::cout << "Now you have to write the full path of the file which contains bank data to analyze"  << std::endl;
+        std::cin >> pathFiles;
+        pathFile = std::filesystem::path(pathFiles);
+        if (!std::filesystem::exists(pathFile))
+        {
+            std::cout << "The file you write does not exist, try again" << std::endl;
+        }
+        else
+        {
+            isValidResponse = true;
+        }
+    }while(!isValidResponse);
+
+    // Read from the text file
+    std::ifstream reportFile(pathFile.string());
+    std::string line;
+    if(reportFile.is_open()) {
+        while (getline(reportFile, line))
+        {
+            if(line.empty()) {
+                break;
+            } else if(line.find("FECHA VALOR") != std::string::npos) {
+                continue;
+            }
+            std::cout << "Read line: " << line << std::endl;
+            ReportEntry entry;
+            int index = 0;
+            size_t pos = 0;
+            while ((pos = line.find(";")) != std::string::npos)
+            {
+                entry.entryColumns.push_back(line.substr(0, pos));
+                line.erase(0, pos + 1);
+            }
+            reportEntries.push_back(entry);
+        }
+        reportFile.close();
+    }
+
+    std::cout << "Number of entries the report you want to analyze has: " << reportEntries.size() << std::endl;
+
+    return 0;
 }
