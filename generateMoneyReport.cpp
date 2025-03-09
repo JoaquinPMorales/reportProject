@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <algorithm> // For std::remove
+#include <string>
 
 enum Analysis {
     eMonthly = 1,
@@ -14,7 +16,7 @@ static const std::vector<std::string> cashOutKey = {"Retirada de efectivo"};
 static const std::vector<std::string> internetPaymentsKeys = {"Paypal", "Amazon", "Compra Internet"};
 static const std::vector<std::string> foodKeys = {"Mercadona", "Lidl"};
 static const std::vector<std::string> petrolKeys = {"Alcampo"};
-static const std::vector<std::string> rentKeys = {"Alquiler"};
+static const std::vector<std::string> rentKeys = {"Alquiler", "Icíar Bollaín"};
 static const std::vector<std::string> gasKeys = {"Iberdrola Gas"};
 static const std::vector<std::string> electricityKeys = {"Iberdrola Electricidad"};
 static const std::vector<std::string> carLoanKey = {"Consumer Finance", "Parking", "Linea Directa"};
@@ -52,7 +54,7 @@ struct MoneyReport{
     Costs  costs;
     
     double getSavings() {
-        return income - costs.getTotalCosts();
+        return income + costs.getTotalCosts();
     }
 };
 
@@ -70,16 +72,17 @@ std::vector<ReportEntry> reportEntries;
 
 Analysis analysisType;
 
-void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
+int incomeEntries = 0;
+int costEntries = 0;
+
+void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport, const double convertedAmount)
 {
-    size_t pos = std::string::npos;
-    //bool hasBeenAsigned = false;
     // Filter eat out payments
     for (size_t i = 0; i < eatOutKey.size(); ++i)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(eatOutKey.at(i)))
         {
-            finalReport.costs.leisureCosts.eatOut += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.leisureCosts.eatOut += convertedAmount;
             return;
         }
     }
@@ -89,7 +92,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(streamingKey.at(i)))
         {
-            finalReport.costs.leisureCosts.streaming += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.leisureCosts.streaming += convertedAmount;
             return;
         }
     }
@@ -99,7 +102,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(cashOutKey.at(i)))
         {
-            finalReport.costs.leisureCosts.cashOut += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.leisureCosts.cashOut += convertedAmount;
             return;
         }
     }
@@ -109,7 +112,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(foodKeys.at(i)))
         {
-            finalReport.costs.food += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.food += convertedAmount;
             return;
         }
     }
@@ -119,7 +122,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(petrolKeys.at(i)))
         {
-            finalReport.costs.petrol += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.petrol += convertedAmount;
             return;
         }
     }
@@ -129,7 +132,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(rentKeys.at(i)))
         {
-            finalReport.costs.rent += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.rent += convertedAmount;
             return;
         }
     }
@@ -139,7 +142,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(gasKeys.at(i)))
         {
-            finalReport.costs.gas += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.gas += convertedAmount;
             return;
         }
     }
@@ -149,7 +152,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(electricityKeys.at(i)))
         {
-            finalReport.costs.electricity += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.electricity += convertedAmount;
             return;
         }
     }
@@ -159,7 +162,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(carLoanKey.at(i)))
         {
-            finalReport.costs.carLoan += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.carLoan += convertedAmount;
             return;
         }
     }
@@ -169,7 +172,7 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(foodAtWorkKeys.at(i)))
         {
-            finalReport.costs.foodAtWork += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.foodAtWork += convertedAmount;
             return;
         }
     }
@@ -179,24 +182,31 @@ void filterEntryCosts(const ReportEntry& entry, MoneyReport& finalReport)
     {
         if(std::string::npos != entry.entryColumns.at(ReportEntry::eConceptPayment).find(internetPaymentsKeys.at(i)))
         {
-            finalReport.costs.leisureCosts.internetPayments += stod(entry.entryColumns.at(ReportEntry::eAmount));
+            finalReport.costs.leisureCosts.internetPayments += convertedAmount;
             return;
         }
     }
 
     std::cout << "Payment not filtered: " << entry.entryColumns.at(ReportEntry::eConceptPayment) << std::endl;
-    finalReport.costs.generalCosts += stod(entry.entryColumns.at(ReportEntry::eAmount));
+    finalReport.costs.generalCosts += convertedAmount;
     
 }
 
 void generateReport(const std::vector<ReportEntry>& entries, MoneyReport& finalReport) {
     for (size_t i = 0; i < entries.size(); i++)
     {
-        double amount = stod(entries.at(i).entryColumns.at(ReportEntry::eAmount));
+        // Step 1: Remove thousands separators ('.')
+        std::string amountStr = entries.at(i).entryColumns.at(ReportEntry::eAmount);
+        amountStr.erase(std::remove(amountStr.begin(), amountStr.end(), '.'), amountStr.end());
+        // Step 2: Replace decimal separator (',') with ('.')
+        std::replace(amountStr.begin(), amountStr.end(), ',', '.');
+        double amount = stod(amountStr);
         if(amount > 0.0) {
             finalReport.income += amount;
+            ++incomeEntries;
         } else {
-            filterEntryCosts(entries.at(i), finalReport);
+            filterEntryCosts(entries.at(i), finalReport, amount);
+            ++costEntries;
         }
     }
     
@@ -210,6 +220,7 @@ void printReport(MoneyReport& finalReport) {
         std::cout << "You selected Montly report" << std::endl;
     
     std::cout << "Your incomes are: " << finalReport.income << std::endl;
+    std::cout << "Number of entries: " << incomeEntries << std::endl;
     std::cout << "-----------------Costs-----------------" << std::endl;
     std::cout << "Your eat out costs: " << finalReport.costs.leisureCosts.eatOut << std::endl;
     std::cout << "Your internet payments: " << finalReport.costs.leisureCosts.internetPayments << std::endl;
@@ -224,8 +235,10 @@ void printReport(MoneyReport& finalReport) {
     std::cout << "Your electricity costs: " << finalReport.costs.electricity << std::endl;
     std::cout << "Your car loan: " << finalReport.costs.carLoan << std::endl;
     std::cout << "Your food at work costs: " << finalReport.costs.foodAtWork << std::endl;
+    std::cout << "Your generic costs: " << finalReport.costs.generalCosts << std::endl;
 
-    std::cout << "Your total costs are: " << finalReport.costs.getTotalCosts() << std::endl;
+    std::cout << "Your total costs sum up are: " << finalReport.costs.getTotalCosts() << std::endl;
+    std::cout << "Number of entries: " << costEntries << std::endl;
     std::cout << "-----------------Final-----------------" << std::endl;
     std::cout << "Final net cost: " << finalReport.getSavings() << std::endl;
 }
